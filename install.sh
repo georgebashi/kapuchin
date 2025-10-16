@@ -43,7 +43,7 @@ done
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJDIR="$SCRIPT_DIR"
-EXTRA_FILE="${PROJDIR}/extras/kapuchin.py"
+EXTRAS_DIR="${PROJDIR}/extras"
 PATCHES_DIR="${PROJDIR}/patches"
 
 err_trap() { echo "[ERROR] $(basename "$0"): line ${1}: ${2}"; exit 1; }
@@ -60,8 +60,12 @@ verify_ready() {
     echo "[ERROR] python3 is required but not found in PATH."
     exit 1
   fi
-  if [ ! -f "$EXTRA_FILE" ]; then
-    echo "[ERROR] Missing extras file at: $EXTRA_FILE"
+  if [ ! -d "$EXTRAS_DIR" ]; then
+    echo "[ERROR] Missing extras directory at: $EXTRAS_DIR"
+    exit 1
+  fi
+  if ! compgen -G "$EXTRAS_DIR/*.py" > /dev/null; then
+    echo "[ERROR] No .py files found in extras directory: $EXTRAS_DIR"
     exit 1
   fi
   if [ ! -d "$PATCHES_DIR" ]; then
@@ -83,16 +87,37 @@ check_folders() {
   echo "Moonraker configuration found at $MOONRAKER_CONFIG_DIR"
 }
 
-link_extension() {
-  local target="${KLIPPER_PATH}/klippy/extras/kapuchin.py"
-  echo -n "Linking extras file to Klipper... "
-  if [ -e "$target" ] && [ "$FORCE" -ne 1 ] && [ ! -L "$target" ]; then
+link_extras() {
+  local source_dir="$EXTRAS_DIR"
+  local target_dir="${KLIPPER_PATH}/klippy/extras"
+  echo -n "Linking extras (*.py) into Klipper... "
+
+  local linked_any=0
+  shopt -s nullglob
+  for f in "$source_dir"/*.py; do
+    [ -e "$f" ] || continue
+    local base
+    base="$(basename "$f")"
+    local target="$target_dir/$base"
+
+    if [ -e "$target" ] && [ "$FORCE" -ne 1 ] && [ ! -L "$target" ]; then
+      echo
+      echo "[WARN] Skipping $base: a non-symlink already exists at target. Re-run with -f to overwrite."
+      continue
+    fi
+
+    ln -sfn "$f" "$target"
+    linked_any=1
+  done
+  shopt -u nullglob
+
+  if [ "$linked_any" -eq 1 ]; then
+    echo "[OK]"
+  else
     echo "[FAILED]"
-    echo "[ERROR] $target exists and is not a symlink. Re-run with -f to overwrite."
+    echo "[ERROR] No extras files were linked."
     exit 1
   fi
-  ln -sfn "$EXTRA_FILE" "$target"
-  echo "[OK]"
 }
 
 link_patches() {
@@ -176,12 +201,21 @@ add_updater() {
 
 uninstall() {
   echo "Uninstalling Kapuchin..."
-  local extra_target="${KLIPPER_PATH}/klippy/extras/kapuchin.py"
-  if [ -e "$extra_target" ]; then
-    rm -f "$extra_target" && echo "Removed $extra_target"
-  else
-    echo "Extras file not found at $extra_target"
-  fi
+  # Remove extras symlinks/files that correspond to our extras directory
+  shopt -s nullglob
+  for f in "$EXTRAS_DIR"/*.py; do
+    [ -e "$f" ] || continue
+    base="$(basename "$f")"
+    extra_target="${KLIPPER_PATH}/klippy/extras/$base"
+    if [ -e "$extra_target" ] || [ -L "$extra_target" ]; then
+      rm -f "$extra_target" && echo "Removed $extra_target"
+    else
+      echo "Extras file not found at $extra_target"
+    fi
+  done
+  shopt -u nullglob
+
+  # Remove patches symlinks that came from this repo
   local patches_target="${KLIPPER_PATH}/klippy/patches"
   if [ -L "$patches_target" ]; then
     local dest
@@ -194,7 +228,6 @@ uninstall() {
   elif [ -d "$patches_target" ]; then
     for f in "$PATCHES_DIR"/*.py; do
       [ -e "$f" ] || continue
-      local base
       base="$(basename "$f")"
       if [ -L "$patches_target/$base" ]; then
         rm -f "$patches_target/$base" && echo "Removed $patches_target/$base"
@@ -208,7 +241,7 @@ main() {
   verify_ready
   check_folders
   if [ "$UNINSTALL" -eq 0 ]; then
-    link_extension
+    link_extras
     link_patches
     add_updater
   else
