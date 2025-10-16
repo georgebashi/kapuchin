@@ -274,28 +274,28 @@ uninstall() {
   echo "You may remove the [update_manager kapuchin] section from moonraker.conf if present."
 }
 
-install_gorilla() {
-  echo -n "[SETUP] Installing/Updating Kapuchin requirements in Klipper venv... "
-  detect_klipper_venv
-  if [ ! -d "$KLIPPER_VENV_PATH" ] || [ ! -f "$KLIPPER_VENV_PATH/bin/activate" ]; then
-    echo
-    echo "[ERROR] Klipper's Python virtual environment not found at \"$KLIPPER_VENV_PATH\"."
-    echo "        Specify with -e <venv_path> or set KLIPPER_VENV env var."
-    exit 1
-  fi
-  local req_file="${PROJDIR}/requirements.txt"
-  if [ ! -f "$req_file" ]; then
-    echo
-    echo "[ERROR] requirements.txt not found at \"$req_file\"."
-    echo "        Add a requirements.txt to the Kapuchin repo to manage dependencies."
-    exit 1
-  fi
-  # shellcheck disable=SC1091
-  source "${KLIPPER_VENV_PATH}/bin/activate"
-  python -m pip install --upgrade pip >/dev/null 2>&1 || true
-  python -m pip install -r "$req_file"
-  deactivate
-  echo "[OK]"
+install_requirements() {
+    echo -n "[SETUP] Installing/Updating Kapuchin requirements in Klipper venv... "
+    detect_klipper_venv
+    if [ ! -d "$KLIPPER_VENV_PATH" ] || [ ! -f "$KLIPPER_VENV_PATH/bin/activate" ]; then
+        echo
+        echo "[ERROR] Klipper's Python virtual environment not found at \"$KLIPPER_VENV_PATH\"."
+        echo "        Specify with -e <venv_path> or set KLIPPER_VENV env var."
+        exit 1
+    fi
+    local req_file="${PROJDIR}/requirements.txt"
+    if [ ! -f "$req_file" ]; then
+        echo
+        echo "[ERROR] requirements.txt not found at \"$req_file\"."
+        echo "        Add a requirements.txt to the Kapuchin repo to manage dependencies."
+        exit 1
+    fi
+    # shellcheck disable=SC1091
+    source "${KLIPPER_VENV_PATH}/bin/activate"
+    python -m pip install --upgrade pip >/dev/null 2>&1 || true
+    python -m pip install -r "$req_file"
+    deactivate
+    echo "[OK]"
 }
 
 main() {
@@ -304,7 +304,7 @@ main() {
   check_folders
   stop_klipper
   if [ "$UNINSTALL" -eq 0 ]; then
-    install_gorilla
+    install_requirements
     link_extension
     link_patches
     add_updater

@@ -1,19 +1,19 @@
 # Kapuchin plugin: reset_velocity_limit
 #
 # Implements a RESET_VELOCITY_LIMIT command to restore original velocity
-# settings. Uses Gorilla to monkey-patch ToolHead.__init__ to save the
+# settings. Uses Monkey to monkey-patch ToolHead.__init__ to save the
 # original config and adds the new G-code command.
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import gorilla
+from ..extras import kapuchin_monkey as monkey
 from ..toolhead import ToolHead
 from ..extras.kapuchin import call_original
 
 
-@gorilla.patches(ToolHead)
+@monkey.patches(ToolHead)
 class _ResetVelocityLimitPatches(object):
     # Patch __init__ to store original velocity configuration
-    @gorilla.name('__init__')
+    @monkey.name('__init__')
     def __init__(self, config):
         call_original(ToolHead, '__init__', self, config)
         self.orig_cfg = {
@@ -41,7 +41,7 @@ class _ResetVelocityLimitPatches(object):
     cmd_RESET_VELOCITY_LIMIT_help = "Reset printer velocity limits"
 
     # Patch register_gcode_handlers to add the new command
-    @gorilla.name('register_gcode_handlers')
+    @monkey.name('register_gcode_handlers')
     def register_gcode_handlers(self):
         call_original(ToolHead, 'register_gcode_handlers', self)
         gcode = self.printer.lookup_object('gcode')

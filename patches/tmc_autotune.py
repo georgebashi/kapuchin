@@ -50,7 +50,7 @@
 import os
 import math
 import logging
-import gorilla
+from ..extras import kapuchin_monkey as monkey
 
 from ..extras import tmc as _tmc
 from ..extras.kapuchin import bootstrap_plugin, call_original
@@ -327,9 +327,9 @@ def _compute_pwm_freq_code(fclk, target_hz):
     return 0
 
 
-@gorilla.patches(_tmc.TMCCommandHelper)
+@monkey.patches(_tmc.TMCCommandHelper)
 class _KapTmcAutotunePatches(object):
-    @gorilla.name("__init__")
+    @monkey.name("__init__")
     def __init__(self, config, mcu_tmc, current_helper):
         # Call original initializer
         call_original(_tmc.TMCCommandHelper, "__init__", self, config, mcu_tmc, current_helper)
@@ -420,7 +420,7 @@ class _KapTmcAutotunePatches(object):
         else:
             logging.info("tmc %s ::: Autotune not active (missing motor/voltage/rsense)", self._kap_stepper_name)
 
-    @gorilla.name("_handle_connect")
+    @monkey.name("_handle_connect")
     def _handle_connect(self):
         # Call the original connect handler first
         call_original(_tmc.TMCCommandHelper, "_handle_connect", self)
@@ -431,7 +431,7 @@ class _KapTmcAutotunePatches(object):
         except Exception:
             logging.exception("tmc %s ::: autotune on connect failed", getattr(self, "_kap_stepper_name", "?"))
 
-    @gorilla.name("cmd_SET_TMC_CURRENT")
+    @monkey.name("cmd_SET_TMC_CURRENT")
     def cmd_SET_TMC_CURRENT(self, gcmd):
         # Execute original current update command first
         call_original(_tmc.TMCCommandHelper, "cmd_SET_TMC_CURRENT", self, gcmd)
@@ -596,7 +596,7 @@ class _KapTmcAutotunePatches(object):
                      "" if vmaxpwm is None else f" (vmaxpwm={vmaxpwm:.4f} mm/s)")
 
     # Expose a small status view via TMCCommandHelper.get_status merge
-    @gorilla.name("get_status")
+    @monkey.name("get_status")
     def get_status(self, eventtime=None):
         base = call_original(_tmc.TMCCommandHelper, "get_status", self, eventtime)
         # Augment status with autotune data

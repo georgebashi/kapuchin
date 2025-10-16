@@ -10,16 +10,16 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
-import gorilla
+from ..extras import kapuchin_monkey as monkey
 from ..extras import tmc as _tmc
 from ..extras import tmc5160 as _tmc5160
 from ..extras.kapuchin import bootstrap_plugin, call_original
 
 
-@gorilla.patches(_tmc.FieldHelper)
+@monkey.patches(_tmc.FieldHelper)
 class _FieldHelperPatches(object):
     # Replace FieldHelper.set_config_field to add optional default=None semantics
-    @gorilla.name("set_config_field")
+    @monkey.name("set_config_field")
     def set_config_field(self, config, field_name, default):
         """
         Allow a field to be set from the config file.
@@ -48,9 +48,9 @@ class _FieldHelperPatches(object):
         return self.set_field(field_name, val)
 
 
-@gorilla.patches(_tmc5160.TMC5160)
+@monkey.patches(_tmc5160.TMC5160)
 class _TMC5160Patches(object):
-    @gorilla.name("__init__")
+    @monkey.name("__init__")
     def __init__(self, config):
         """
         Wrapper that runs core initialization, then applies SHORT_CONF logic

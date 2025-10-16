@@ -1,6 +1,6 @@
 # Kapuchin extras loader and core (merged)
 #
-# Loads Gorilla-based patching when a [kapuchin] section is present and
+# Loads Monkey-based patching when a [kapuchin] section is present and
 # provides the KapuchinManager that loads [patch ...] plugins just before
 # configuration validation.
 #
@@ -12,16 +12,6 @@ import os
 
 # Name of the Kapuchin manager in printer.objects
 KAPUCHIN_MANAGER_NAME = "kapuchin"
-
-
-def _require_gorilla(config):
-    try:
-        import gorilla  # noqa: F401
-    except Exception as e:
-        raise config.error(
-            "Kapuchin requires the 'gorilla' package to be installed. "
-            "Install with: pip install gorilla. Error: %s" % (e,)
-        )
 
 
 class KapuchinManager:
@@ -85,16 +75,16 @@ class KapuchinManager:
 
 def install():
     """
-    Install the Gorilla patch that intercepts PrinterConfig.check_unused_options()
+    Install the Monkey patch that intercepts PrinterConfig.check_unused_options()
     to load [patch ...] plugins just before config validation.
     """
-    # We import here to avoid side effects during import_test()
-    import gorilla
+    # Import here to avoid side effects during import_test()
+    from . import kapuchin_monkey as monkey
     import configfile
 
     original_check_unused = configfile.PrinterConfig.check_unused_options
 
-    @gorilla.patch(configfile.PrinterConfig)
+    @monkey.patch(configfile.PrinterConfig)
     def check_unused_options(self, config):
         printer = self.get_printer()
         manager = printer.lookup_object(KAPUCHIN_MANAGER_NAME, None)
@@ -108,13 +98,8 @@ def install():
         # Call original validator
         original_check_unused(self, config)
 
-    settings = gorilla.Settings(allow_hit=True)
-    gorilla.apply(
-        gorilla.get_destination(check_unused_options),
-        'check_unused_options',
-        check_unused_options,
-        settings=settings
-    )
+    # Always overwrite and keep original stored internally
+    monkey.apply(monkey.Patch(configfile.PrinterConfig, 'check_unused_options', check_unused_options))
 
 
 class KapuchinExtrasSentinel:
@@ -139,11 +124,10 @@ class KapuchinExtrasSentinel:
 def load_config(config):
     """
     Extras entrypoint: called when a [kapuchin] section exists in printer.cfg.
-    Ensures Gorilla is present, installs the patch, and returns a sentinel object.
+    Installs the Monkey patch and returns a sentinel object.
     """
-    _require_gorilla(config)
     install()
-    logging.info("Kapuchin: extras loader installed Gorilla patch")
+    logging.info("Kapuchin: extras loader installed Monkey patch")
     return KapuchinExtrasSentinel(config)
 
 
@@ -151,18 +135,18 @@ def bootstrap_plugin(module, config, before_patch=None, after_patch=None, status
     """
     Bootstrap a minimal patch plugin.
 
-    - Finds and applies all Gorilla patches in the given module.
+    - Finds and applies all Monkey patches in the given module.
     - Optionally runs before/after hooks.
     - Returns a minimal plugin object with a get_status() method.
     """
-    import gorilla
+    from . import kapuchin_monkey as monkey
+
     if before_patch:
         before_patch(config)
 
-    _settings = gorilla.Settings(allow_hit=True)
-    patches = gorilla.find_patches([module])
+    patches = monkey.find_patches([module])
     for patch in patches:
-        gorilla.apply(patch, settings=_settings)
+        monkey.apply(patch)
 
     if after_patch:
         after_patch(config)
@@ -182,7 +166,7 @@ def bootstrap_plugin(module, config, before_patch=None, after_patch=None, status
 
 def call_original(cls, name, self, *args, **kwargs):
     """
-    Convenience helper to call the original (pre-patch) method from within a Gorilla patch.
+    Convenience helper to call the original (pre-patch) method from within a Monkey patch.
 
     Examples:
       - Call a base __init__:
@@ -191,8 +175,8 @@ def call_original(cls, name, self, *args, **kwargs):
       - Delegate to a core method:
           call_original(fan.Fan, "_apply_speed", self, print_time, p)
     """
-    import gorilla
-    original = gorilla.get_original_attribute(cls, name)
+    from . import kapuchin_monkey as monkey
+    original = monkey.get_original_attribute(cls, name)
     return original(self, *args, **kwargs)
 
 

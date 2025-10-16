@@ -6,16 +6,16 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
-import gorilla
+from ..extras import kapuchin_monkey as monkey
 from ..extras import heaters
 from ..extras.kapuchin import call_original
 
 PID_PARAM_BASE = 255.0
 
 
-@gorilla.patches(heaters.Heater)
+@monkey.patches(heaters.Heater)
 class _SetHeaterPIDPatch:
-    @gorilla.name("__init__")
+    @monkey.name("__init__")
     def __init__(self, config, parent_heater=None):
         call_original(heaters.Heater, "__init__", self, config, parent_heater)
 

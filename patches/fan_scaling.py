@@ -1,21 +1,21 @@
 # Kapuchin plugin: fan_scaling
 #
 # Implements PWM scaling for Fan so that requests map to [off_below, max_power]
-# without modifying core code. Uses Gorilla to monkey-patch Fan._apply_speed
+# without modifying core code. Uses Monkey to monkey-patch Fan._apply_speed
 # and enforces off_below <= max_power via Fan.__init__ validation.
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
-import gorilla
+from ..extras import kapuchin_monkey as monkey
 from ..extras import fan
 from ..extras.kapuchin import call_original
 
 
-@gorilla.patches(fan.Fan)
+@monkey.patches(fan.Fan)
 class _FanScalingPatches(object):
     # Replace Fan._apply_speed using recommended decorator style and retrieve
-    # the original attribute via gorilla.get_original_attribute.
-    @gorilla.name('_apply_speed')
+    # the original attribute via monkey.get_original_attribute.
+    @monkey.name('_apply_speed')
     def _apply_speed(self, print_time, value):
         """
         Map requested value r in to proxy p such that core computes:
@@ -45,7 +45,7 @@ class _FanScalingPatches(object):
             return call_original(fan.Fan, '_apply_speed', self, print_time, 0.0)
 
     # Add strict validation to Fan.__init__ so any future instantiations are checked.
-    @gorilla.name('__init__')
+    @monkey.name('__init__')
     def __init__(self, _cfg, default_shutdown_speed=0.):
         # Initialize first, then validate derived attributes
         call_original(fan.Fan, '__init__', self, _cfg, default_shutdown_speed)

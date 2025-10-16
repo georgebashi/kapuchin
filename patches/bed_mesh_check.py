@@ -1,7 +1,7 @@
 # Kapuchin plugin: bed_mesh_check
 #
 # Adds a BED_MESH_CHECK gcode command without modifying core code by
-# monkey-patching BedMesh via Gorilla.
+# monkey-patching BedMesh via Monkey.
 #
 # Behavior:
 #   - Validates mesh deviation (MAX_DEVIATION)
@@ -12,7 +12,7 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
 import logging
-import gorilla
+from ..extras import kapuchin_monkey as monkey
 from ..extras import bed_mesh
 from ..extras.kapuchin import bootstrap_plugin, call_original
 
@@ -30,10 +30,10 @@ def _register_command_for_instance(bm):
     bm._kapuchin_bmc_registered = True
 
 
-@gorilla.patches(bed_mesh.BedMesh)
+@monkey.patches(bed_mesh.BedMesh)
 class _BedMeshCheckPatches(object):
     # Defensive registration for any BedMesh created after plugin load.
-    @gorilla.name("__init__")
+    @monkey.name("__init__")
     def __init__(self, config):
         call_original(bed_mesh.BedMesh, "__init__", self, config)
         try:
@@ -42,7 +42,7 @@ class _BedMeshCheckPatches(object):
             logging.exception("bed_mesh_check: registration in BedMesh.__init__ failed")
 
     # Add the BED_MESH_CHECK gcode handler to the BedMesh class.
-    @gorilla.name("cmd_BED_MESH_CHECK")
+    @monkey.name("cmd_BED_MESH_CHECK")
     def cmd_BED_MESH_CHECK(self, gcmd):
         """
         BED_MESH_CHECK [MAX_DEVIATION=<float>] [MAX_SLOPE=<float>]
