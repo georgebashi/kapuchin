@@ -176,7 +176,14 @@ def call_original(cls, name, self, *args, **kwargs):
           call_original(fan.Fan, "_apply_speed", self, print_time, p)
     """
     from . import kapuchin_monkey as monkey
+    import inspect
+    # get the calling frame
+    frame = inspect.currentframe().f_back
+    # get the calling function
+    func = frame.f_globals.get(frame.f_code.co_name)
     original = monkey.get_original_attribute(cls, name)
+    if func is original:
+        original = monkey.get_original_attribute(cls, name, 2)
     return original(self, *args, **kwargs)
 
 
