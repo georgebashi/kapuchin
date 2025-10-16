@@ -43,8 +43,8 @@ done
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJDIR="$SCRIPT_DIR"
-EXTRAS_DIR="${PROJDIR}/extras"
-PATCHES_DIR="${PROJDIR}/patches"
+EXTRAS_DIR="${PROJDIR}/klippy/extras"
+PATCHES_DIR="${PROJDIR}/klippy/patches"
 
 err_trap() { echo "[ERROR] $(basename "$0"): line ${1}: ${2}"; exit 1; }
 trap 'err_trap ${LINENO} "Command exited with non-zero status."' ERR
