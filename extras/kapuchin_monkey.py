@@ -10,7 +10,7 @@ The API surface preserved here is sufficient for our use:
 - default_filter
 - DecoratorData
 - Patch
-- apply, revert
+- apply
 - patch, patches
 - destination, name, filter
 - create_patches, find_patches
@@ -20,14 +20,14 @@ All internal marker attributes are renamed to use the '_monkey_*' prefix.
 """
 
 __all__ = [
-    'default_filter', 'DecoratorData', 'Patch', 'apply', 'revert',
+    'default_filter', 'DecoratorData', 'Patch', 'apply',
     'patch', 'patches', 'destination', 'name', 'filter',
     'create_patches', 'find_patches', 'get_attribute',
     'get_original_attribute', 'get_decorator_data'
 ]
 
 __title__ = 'monkey'
-__version__ = '0.1.0-inline'
+__version__ = '0.2.0-inline'
 __summary__ = "Lightweight inline monkey patching (based on gorilla)"
 __url__ = 'https://github.com/christophercrouzet/gorilla'
 __author__ = "Kapuchin maintainers"
@@ -43,8 +43,6 @@ import types
 
 _CLASS_TYPES = (type,)
 
-def _iteritems(d):
-    return iter(d.items())
 
 # Pattern for each internal attribute name.
 _PATTERN = '_monkey_{}'
@@ -120,21 +118,16 @@ class Patch(object):
             .format(type(self).__name__, self.destination, self.name, self.obj)
         )
 
-    def __hash__(self):
-        return hash(sorted(_iteritems(self.__dict__)))
 
     def __eq__(self, other):
         if isinstance(other, type(self)):
             return self.__dict__ == other.__dict__
         return NotImplemented
 
-    def __ne__(self, other):
-        is_equal = self.__eq__(other)
-        return is_equal if is_equal is NotImplemented else not is_equal
 
     def _update(self, **kwargs):
         """Update some attributes (used by modifier decorators)."""
-        for key, value in _iteritems(kwargs):
+        for key, value in kwargs.items():
             setattr(self, key, copy.deepcopy(value))
 
 
@@ -167,32 +160,6 @@ def apply(patch, id='default'):
     setattr(patch.destination, patch.name, patch.obj)
 
 
-def revert(patch):
-    """Revert a patch.
-
-    This is only possible if the attribute existed before the patch was applied
-    (or if it was created by the patch, in which case it will be deleted).
-    """
-    created = _CREATED.format(patch.name)
-    if getattr(patch.destination, created, False):
-        delattr(patch.destination, patch.name)
-        return
-
-    original_ids = _ORIGINAL_IDS.format(patch.name)
-    try:
-        ids = getattr(patch.destination, original_ids)
-        if not ids:
-            raise AttributeError
-    except AttributeError:
-        raise RuntimeError(
-            "Cannot revert the attribute named '{}' because no original was stored."
-            .format(patch.destination.__name__))
-
-    original_item = _ORIGINAL_ITEM.format(patch.name, len(ids) - 1)
-    attr = getattr(patch.destination, original_item)
-    setattr(patch.destination, patch.name, attr)
-    delattr(patch.destination, original_item)
-    setattr(patch.destination, original_ids, ids[:-1])
 
 
 def patch(destination, name=None, settings=None):
@@ -326,21 +293,25 @@ def get_attribute(obj, name):
             return object.__getattribute__(obj_, name)
         except AttributeError:
             pass
-    raise AttributeError("'{}' object has no attribute '{}'"
-                         .format(type(obj), name))
+    owner = obj if isinstance(obj, _CLASS_TYPES) else type(obj)
+    owner_name = getattr(owner, '__name__', repr(owner))
+    raise AttributeError("'{}' has no attribute '{}'".format(owner_name, name))
 
 
 def get_original_attribute(obj, name, id='default'):
-    """Retrieve an overriden attribute that has been stored."""
+    """Retrieve an overridden attribute that has been stored."""
     original_ids = _ORIGINAL_IDS.format(name)
     try:
         ids = getattr(obj, original_ids)
         if not ids:
             raise AttributeError
     except AttributeError:
+        owner = obj if isinstance(obj, _CLASS_TYPES) else type(obj)
+        owner_name = getattr(owner, '__name__', repr(owner))
         raise AttributeError(
-            "Cannot retrieve the attribute named '{}' because no original was stored."
-            .format(obj.__name__))
+            "Cannot retrieve original attribute '{}' on {} because no original was stored."
+            .format(name, owner_name)
+        )
 
     for i, original_id in reversed(tuple(enumerate(ids))):
         if original_id == id:
@@ -348,38 +319,40 @@ def get_original_attribute(obj, name, id='default'):
             return getattr(obj, original_item)
 
     raise AttributeError(
-        "No original attribute found matching the id '{}'.".format(id))
+        "No original attribute found for '{}' matching id '{}'. Available ids: {}"
+        .format(name, id, list(ids))
+    )
 
 
 def get_decorator_data(obj, set_default=False):
     """Retrieve any decorator data from an object."""
     if isinstance(obj, _CLASS_TYPES):
-        datas = getattr(obj, _DECORATOR_DATA, {})
-        data = datas.setdefault(obj, None)
+        data = getattr(obj, _DECORATOR_DATA, None)
+        # Back-compat: migrate from old dict-of-self shape if present.
+        if isinstance(data, dict):
+            data = data.get(obj, None)
         if data is None and set_default:
             data = DecoratorData()
-            datas[obj] = data
-            setattr(obj, _DECORATOR_DATA, datas)
+            setattr(obj, _DECORATOR_DATA, data)
+        return data
     else:
         data = getattr(obj, _DECORATOR_DATA, None)
         if data is None and set_default:
             data = DecoratorData()
             setattr(obj, _DECORATOR_DATA, data)
-    return data
+        return data
 
 
 def _get_base(obj):
     """Unwrap decorators to retrieve the base object."""
-    if hasattr(obj, '__func__'):
-        obj = obj.__func__
-    elif isinstance(obj, property):
-        obj = obj.fget
-    elif isinstance(obj, (classmethod, staticmethod)):
-        # Fallback for Python < 2.7 compat pattern (kept for completeness).
-        obj = obj.__get__(None, object)
-    else:
+    while True:
+        if hasattr(obj, '__func__'):
+            obj = obj.__func__
+            continue
+        if isinstance(obj, property):
+            obj = obj.fget
+            continue
         return obj
-    return _get_base(obj)
 
 
 def _get_members(obj, traverse_bases=True, filter=default_filter,
