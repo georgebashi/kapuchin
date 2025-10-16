@@ -6,9 +6,9 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
-from ..extras import kapuchin_monkey as monkey
-from ..extras import heaters
-from ..extras.kapuchin import call_original
+from extras import kapuchin_monkey as monkey
+from extras import heaters
+from extras.kapuchin import call_original
 
 PID_PARAM_BASE = 255.0
 

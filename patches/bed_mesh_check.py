@@ -12,9 +12,9 @@
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
 import logging
-from ..extras import kapuchin_monkey as monkey
-from ..extras import bed_mesh
-from ..extras.kapuchin import bootstrap_plugin, call_original
+from extras import kapuchin_monkey as monkey
+from extras import bed_mesh
+from extras.kapuchin import bootstrap_plugin, call_original
 
 
 def _register_command_for_instance(bm):

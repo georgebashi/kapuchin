@@ -56,7 +56,7 @@ class KapuchinManager:
         if not os.path.exists(py_name):
             raise config.error("Unable to load patch module '%s'" % (module_name,))
 
-        mod = importlib.import_module('klippy.patches.' + module_name)
+        mod = importlib.import_module('patches.' + module_name)
         init_func_name = 'load_config'
         if len(module_parts) > 2:
             init_func_name = 'load_config_prefix'

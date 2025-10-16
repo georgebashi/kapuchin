@@ -50,10 +50,10 @@
 import os
 import math
 import logging
-from ..extras import kapuchin_monkey as monkey
+from extras import kapuchin_monkey as monkey
 
-from ..extras import tmc as _tmc
-from ..extras.kapuchin import bootstrap_plugin, call_original
+from extras import tmc as _tmc
+from extras.kapuchin import bootstrap_plugin, call_original
 
 
 # Default target PWM switching frequencies (Hz) per driver

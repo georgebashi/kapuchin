@@ -10,10 +10,10 @@
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
 
-from ..extras import kapuchin_monkey as monkey
-from ..extras import tmc as _tmc
-from ..extras import tmc5160 as _tmc5160
-from ..extras.kapuchin import bootstrap_plugin, call_original
+from extras import kapuchin_monkey as monkey
+from extras import tmc as _tmc
+from extras import tmc5160 as _tmc5160
+from extras.kapuchin import bootstrap_plugin, call_original
 
 
 @monkey.patches(_tmc.FieldHelper)
