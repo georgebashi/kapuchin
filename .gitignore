@@ -1,1 +1,9 @@
-.jj
+
+
+# Ignore Klippy directory
+klippy/*
+!klippy/extras/
+klippy/extras/*
+!klippy/extras/kapuchin.py
+!klippy/extras/kapuchin_monkey.py
+!klippy/patches/

@@ -9,7 +9,7 @@ The API surface preserved here is sufficient for our use:
 
 - default_filter
 - DecoratorData
-- Patch
+- Patcharst
 - apply
 - patch, patches
 - destination, name, filter
