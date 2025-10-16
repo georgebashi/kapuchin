@@ -51,12 +51,6 @@ trap 'err_trap ${LINENO} "Command exited with non-zero status."' ERR
 
 command_exists() { command -v "$1" >/dev/null 2>&1; }
 
-service_exists() {
-  command_exists systemctl || return 1
-  systemctl list-units --full -all -t service --no-legend | grep -Fq "$1.service" && return 0
-  systemctl list-unit-files --type=service --no-legend | grep -Fq "$1.service"
-}
-
 verify_ready() {
   if [ "$EUID" -eq 0 ]; then
     echo "[ERROR] This script must not run as root. Exiting."
@@ -76,37 +70,6 @@ verify_ready() {
   fi
 }
 
-detect_klipper_venv() {
-  if [ -d "$KLIPPER_VENV_PATH" ] && [ -f "$KLIPPER_VENV_PATH/bin/activate" ]; then
-    return 0
-  fi
-  if service_exists "$KLIPPER_SERVICE_NAME"; then
-    local svc_info py_path venv
-    svc_info=$(systemctl show "$KLIPPER_SERVICE_NAME" -p ExecStart 2>/dev/null || true)
-    py_path=$(echo "$svc_info" | sed -n 's/^ExecStart=//p' | tr ' ' '\n' | grep -m1 '/bin/python' || true)
-    if [ -z "$py_path" ]; then
-      svc_info=$(systemctl cat "$KLIPPER_SERVICE_NAME" 2>/dev/null || true)
-      py_path=$(echo "$svc_info" | grep -Eo '[^ ]+/bin/python[0-9.]*' | head -n1 || true)
-    fi
-    if [ -n "$py_path" ]; then
-      venv=$(dirname "$(dirname "$py_path")")
-      if [ -d "$venv" ] && [ -f "$venv/bin/activate" ]; then
-        KLIPPER_VENV_PATH="$venv"
-        echo "[INFO] Detected Klipper venv at $KLIPPER_VENV_PATH"
-      fi
-    fi
-  fi
-}
-
-check_klipper() {
-  if service_exists "$KLIPPER_SERVICE_NAME"; then
-    echo "Klipper service found with name \"$KLIPPER_SERVICE_NAME\"."
-  else
-    echo "[ERROR] Klipper service \"$KLIPPER_SERVICE_NAME\" not found. Install Klipper first or specify with -s."
-    exit 1
-  fi
-}
-
 check_folders() {
   if [ ! -d "${KLIPPER_PATH}/klippy/extras" ]; then
     echo "[ERROR] Klipper installation not found in directory \"$KLIPPER_PATH\"."
@@ -118,38 +81,6 @@ check_folders() {
     exit 1
   fi
   echo "Moonraker configuration found at $MOONRAKER_CONFIG_DIR"
-}
-
-stop_klipper() {
-  echo -n "Stopping Klipper ($KLIPPER_SERVICE_NAME)... "
-  if service_exists "$KLIPPER_SERVICE_NAME"; then
-    if sudo systemctl is-active --quiet "$KLIPPER_SERVICE_NAME"; then
-      sudo systemctl stop "$KLIPPER_SERVICE_NAME" || true
-    fi
-    echo "[OK]"
-  else
-    echo "[SKIPPED]"
-  fi
-}
-
-start_klipper() {
-  echo -n "Starting Klipper ($KLIPPER_SERVICE_NAME)... "
-  if service_exists "$KLIPPER_SERVICE_NAME"; then
-    sudo systemctl start "$KLIPPER_SERVICE_NAME" || true
-    echo "[OK]"
-  else
-    echo "[SKIPPED]"
-  fi
-}
-
-restart_moonraker() {
-  echo -n "Restarting Moonraker... "
-  if service_exists moonraker; then
-    sudo systemctl restart moonraker || true
-    echo "[OK]"
-  else
-    echo "[SKIPPED]"
-  fi
 }
 
 link_extension() {
@@ -241,7 +172,6 @@ add_updater() {
     fi
   } >> "$conf"
   echo "[OK]"
-  restart_moonraker
 }
 
 uninstall() {
@@ -274,43 +204,16 @@ uninstall() {
   echo "You may remove the [update_manager kapuchin] section from moonraker.conf if present."
 }
 
-install_requirements() {
-    echo -n "[SETUP] Installing/Updating Kapuchin requirements in Klipper venv... "
-    detect_klipper_venv
-    if [ ! -d "$KLIPPER_VENV_PATH" ] || [ ! -f "$KLIPPER_VENV_PATH/bin/activate" ]; then
-        echo
-        echo "[ERROR] Klipper's Python virtual environment not found at \"$KLIPPER_VENV_PATH\"."
-        echo "        Specify with -e <venv_path> or set KLIPPER_VENV env var."
-        exit 1
-    fi
-    local req_file="${PROJDIR}/requirements.txt"
-    if [ ! -f "$req_file" ]; then
-        echo
-        echo "[ERROR] requirements.txt not found at \"$req_file\"."
-        echo "        Add a requirements.txt to the Kapuchin repo to manage dependencies."
-        exit 1
-    fi
-    # shellcheck disable=SC1091
-    source "${KLIPPER_VENV_PATH}/bin/activate"
-    python -m pip install --upgrade pip >/dev/null 2>&1 || true
-    python -m pip install -r "$req_file"
-    deactivate
-    echo "[OK]"
-}
-
 main() {
   verify_ready
-  check_klipper
   check_folders
-  stop_klipper
   if [ "$UNINSTALL" -eq 0 ]; then
-    install_requirements
     link_extension
     link_patches
     add_updater
   else
     uninstall
   fi
-  start_klipper
 }
+
 main "$@"
