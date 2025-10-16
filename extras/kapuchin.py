@@ -11,7 +11,7 @@ import logging
 import os
 
 # Name of the Kapuchin manager in printer.objects
-KAPUCHIN_MANAGER_NAME = "kapuchin"
+KAPUCHIN_MANAGER_NAME = "kapuchin_manager"
 
 
 class KapuchinManager:
@@ -88,7 +88,7 @@ def install():
     def check_unused_options(self, config):
         printer = self.get_printer()
         manager = printer.lookup_object(KAPUCHIN_MANAGER_NAME, None)
-        if manager is None:
+        if manager is None or not hasattr(manager, 'load_plugins'):
             manager = KapuchinManager(printer)
             printer.add_object(KAPUCHIN_MANAGER_NAME, manager)
 
