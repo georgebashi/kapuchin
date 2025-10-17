@@ -84,7 +84,7 @@ class _TMC5160Patches(object):
             )
 
 
-def _before_patch_hook(config):
+def before_patch(config):
     # Ensure SHORT_CONF field mapping exists (upstream adds this)
     _tmc5160.Fields.setdefault("SHORT_CONF", {
         "s2vs_level":   0x0F << 0,
@@ -94,10 +94,5 @@ def _before_patch_hook(config):
     })
 
 
-def load_config(config):
-    return bootstrap_plugin(
-        __import__(__name__),
-        config,
-        before_patch=_before_patch_hook,
-        status={'short_conf': True}
-    )
+def get_status_response():
+    return {'short_conf': True}

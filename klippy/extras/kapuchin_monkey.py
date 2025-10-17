@@ -268,20 +268,16 @@ def create_patches(destination, root, settings=None, traverse_bases=True,
     return out
 
 
-def find_patches(modules, recursive=True):
-    """Find all the patches created through decorators."""
+def find_patches(module):
+    """Find all the patches created through decorators in a specific module."""
     out = []
-    modules_iter = (module
-                    for package in modules
-                    for module in _module_iterator(package, recursive=recursive))
-    for module in modules_iter:
-        members = _get_members(module, filter=None)
-        for _, value in members:
-            base = _get_base(value)
-            decorator_data = get_decorator_data(base)
-            if decorator_data is None:
-                continue
-            out.extend(decorator_data.patches)
+    members = _get_members(module, filter=None)
+    for _, value in members:
+        base = _get_base(value)
+        decorator_data = get_decorator_data(base)
+        if decorator_data is None:
+            continue
+        out.extend(decorator_data.patches)
     return out
 
 

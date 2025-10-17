@@ -616,14 +616,6 @@ class _KapTmcAutotunePatches(object):
         return base
 
 
-def load_config(config):
-    # Bootstrap plugin: apply patches and expose a minimal status object
-    def _status():
-        # summarized view across all tuned steppers
-        return {"steppers": list(_STATUS.keys())}
-
-    return bootstrap_plugin(
-        __import__(__name__),
-        config,
-        status={"kap_tmc_autotune": _status()},
-    )
+def get_status_response():
+    # summarized view across all tuned steppers
+    return {"kap_tmc_autotune": {"steppers": list(_STATUS.keys())}}

@@ -160,7 +160,7 @@ class _BedMeshCheckPatches(object):
             )
 
 
-def _after_patch_hook(config):
+def after_patch(config):
     # Register command on already-constructed BedMesh instance (if any)
     printer = config.get_printer()
     bedmesh = printer.lookup_object("bed_mesh", None)
@@ -172,10 +172,5 @@ def _after_patch_hook(config):
             logging.exception("bed_mesh_check: failed registering on existing BedMesh instance")
 
 
-def load_config(config):
-    return bootstrap_plugin(
-        __import__(__name__),
-        config,
-        after_patch=_after_patch_hook,
-        status={"command": "BED_MESH_CHECK"}
-    )
+def get_status_response():
+    return {"command": "BED_MESH_CHECK"}

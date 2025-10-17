@@ -131,25 +131,28 @@ def load_config(config):
     return KapuchinExtrasSentinel(config)
 
 
-def bootstrap_plugin(module, config, before_patch=None, after_patch=None, status=None):
+def bootstrap_plugin(module, config):
     """
     Bootstrap a minimal patch plugin.
 
     - Finds and applies all Monkey patches in the given module.
-    - Optionally runs before/after hooks.
-    - Returns a minimal plugin object with a get_status() method.
+    - Optionally runs before_patch/after_patch hooks if defined in the module.
+    - Returns a minimal plugin object with a get_status() method populated
+      from a get_status_response() function if defined in the module.
     """
     from . import kapuchin_monkey as monkey
 
-    if before_patch:
-        before_patch(config)
+    before_patch_hook = getattr(module, 'before_patch', None)
+    if before_patch_hook:
+        before_patch_hook(config)
 
-    patches = monkey.find_patches([module])
+    patches = monkey.find_patches(module)
     for patch in patches:
         monkey.apply(patch)
 
-    if after_patch:
-        after_patch(config)
+    after_patch_hook = getattr(module, 'after_patch', None)
+    if after_patch_hook:
+        after_patch_hook(config)
 
     class _Plugin:
         def __init__(self, _cfg):
@@ -157,8 +160,9 @@ def bootstrap_plugin(module, config, before_patch=None, after_patch=None, status
 
         def get_status(self, eventtime=None):
             res = {"enabled": True}
-            if status:
-                res.update(status)
+            get_status_response = getattr(module, 'get_status_response', None)
+            if get_status_response:
+                res.update(get_status_response())
             return res
 
     return _Plugin(config)

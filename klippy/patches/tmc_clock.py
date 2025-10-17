@@ -27,9 +27,4 @@ class _KapTmcClockPatches(object):
 
         return base
 
-def load_config(config):
-    # Bootstrap the plugin to apply the patches
-    return bootstrap_plugin(
-        __import__(__name__),
-        config,
-    )
+# load_config is no longer required
